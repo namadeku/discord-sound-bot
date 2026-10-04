@@ -7,35 +7,27 @@ Discord-бот для своего сервера с окном настроек
 - 🤬 **Счётчик мата.** Считает заданные слова в чате и публикует рейтинг в выбранный канал по расписанию или по команде `/stats`.
 - 🖥 **Окно настроек.** Всё настраивается мышкой. Изменения применяются сразу, перезапускать бота не нужно.
 
-## Требования
-
-- Windows 10/11
-- [uv](https://docs.astral.sh/uv/) — менеджер Python
-- [FFmpeg](https://ffmpeg.org/) в `PATH` (например, `scoop install ffmpeg` или `winget install ffmpeg`)
-
 ## Установка
+
+**[⬇ Скачать DiscordSoundBot-win64.zip](https://github.com/namadeku/discord-sound-bot/releases/latest/download/DiscordSoundBot-win64.zip)** (Windows 10/11, ничего дополнительно ставить не нужно)
+
+1. Распакуйте архив в любую папку, куда у вас есть права на запись, например в «Документы». В `Program Files` распаковывать не стоит: программа хранит настройки рядом с собой.
+2. Запустите `DiscordSoundBot.exe` и согласитесь создать ярлык на рабочем столе. Потом ярлык можно создать заново кнопкой на вкладке «Общее».
+3. Выполните [настройку бота в Discord](#настройка-бота-в-discord-один-раз).
+
+> Если Windows покажет «Система Windows защитила ваш компьютер», нажмите **«Подробнее» → «Выполнить в любом случае»**. Это предупреждение появляется у всех программ без платной цифровой подписи.
+
+**Обновление:** скачайте новый архив и распакуйте его поверх старой папки. Настройки, статистика, токен и звуки сохранятся.
+
+### Запуск из исходников
+
+Понадобятся [uv](https://docs.astral.sh/uv/) и [FFmpeg](https://ffmpeg.org/) в `PATH` (`winget install ffmpeg`).
 
 ```powershell
 git clone https://github.com/namadeku/discord-sound-bot.git
 cd discord-sound-bot
 uv sync
-```
-
-Запуск:
-
-```powershell
 uv run discord-sound-bot
-```
-
-### Ярлык на рабочем столе
-
-```powershell
-$proj = (Get-Location).Path
-$lnk = (New-Object -ComObject WScript.Shell).CreateShortcut("$([Environment]::GetFolderPath('Desktop'))\Discord Sound Bot.lnk")
-$lnk.TargetPath = "$proj\.venv\Scripts\discord-sound-bot.exe"
-$lnk.WorkingDirectory = $proj
-$lnk.IconLocation = "$env:SystemRoot\System32\SndVol.exe,0"
-$lnk.Save()
 ```
 
 ## Настройка бота в Discord (один раз)
@@ -43,7 +35,7 @@ $lnk.Save()
 1. Откройте [Discord Developer Portal](https://discord.com/developers/applications) и нажмите **New Application**.
 2. На вкладке **Bot** нажмите **Reset Token**, скопируйте токен и вставьте его в программе на вкладке «Общее» → «Сохранить токен».
 3. Там же, в разделе **Privileged Gateway Intents**, включите **Server Members Intent** и **Message Content Intent**.
-4. На вкладке **OAuth2 → URL Generator** отметьте scopes `bot` и `applications.commands`. В правах отметьте *View Channels*, *Send Messages*, *Connect* и *Speak*. Откройте получившуюся ссылку и добавьте бота на сервер.
+4. В программе на вкладке «Общее» нажмите **«Пригласить бота на сервер»**, выберите сервер и подтвердите. Так же бот добавляется на любой другой сервер; после этого перезапустите бота, чтобы на новом сервере появились слэш-команды.
 
 Токен хранится локально в файле `.env` и в репозиторий не попадает. Никому его не передавайте.
 
@@ -56,7 +48,7 @@ $lnk.Save()
 | **Приветствия** | Участник и его звук. Если бот запущен, участника можно выбрать из списка, иначе впишите ID. Есть звук для всех остальных и прослушивание на компьютере. |
 | **Случайные звуки** | Включение и выключение, интервал в минутах и выбор файлов (Ctrl/Shift + клик) |
 | **Счётчик мата** | Слова или их корни (корень «бля» засчитает и «блять»), канал для статистики, частота публикации в часах (0 — только по команде), обнуление после публикации |
-| **Общее** | Токен, папка со звуками, громкость, задержка захода в канал (по умолчанию 20 с), автозапуск, выход из пустого канала |
+| **Общее** | Токен, папка со звуками, громкость, задержка захода в канал (по умолчанию 20 с), автозапуск, выход из пустого канала, приглашение бота на сервер, ярлык на рабочем столе |
 | **Журнал** | События и ошибки (дублируются в `bot.log`) |
 
 ### Команды в Discord
@@ -77,7 +69,7 @@ $lnk.Save()
 | `.env` | Токен бота |
 | `bot.log` | Журнал |
 
-Все эти файлы локальные и исключены из git.
+Все эти файлы лежат рядом с программой (рядом с `DiscordSoundBot.exe` или в корне проекта) и исключены из git.
 
 ## Разработка
 
@@ -87,6 +79,14 @@ uv run ruff check . ; uv run ruff format --check .
 uv run basedpyright
 uv run pytest
 ```
+
+### Сборка exe
+
+```powershell
+.\scripts\build.ps1
+```
+
+Скрипт соберёт `release\DiscordSoundBot-win64.zip`: приложение (PyInstaller), [FFmpeg](https://github.com/BtbN/FFmpeg-Builds) (LGPL-сборка), README и лицензии. Чтобы выпустить новую версию, поднимите версию (`uv version --bump minor`), закоммитьте и отправьте тег `vX.Y.Z`. GitHub Actions соберёт архив и опубликует релиз.
 
 ## Условия использования
 
@@ -100,4 +100,4 @@ uv run pytest
 
 ## Лицензия
 
-[MIT](LICENSE)
+[MIT](LICENSE). В архив входит FFmpeg под лицензией LGPL, её текст лежит в `FFMPEG-LICENSE.txt`, а исходники доступны на [ffmpeg.org](https://ffmpeg.org/download.html).

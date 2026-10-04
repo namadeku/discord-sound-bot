@@ -1,0 +1,54 @@
+name: Release
+
+# Push a tag like v1.2.3 to build DiscordSoundBot-win64.zip and publish a GitHub release.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10
+
+      - name: Lint, type-check, test
+        run: |
+          uv sync --locked
+          uv run ruff check .
+          uv run ruff format --check .
+          uv run basedpyright
+          uv run pytest
+
+      - name: Build
+        shell: pwsh
+        run: ./scripts/build.ps1
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: DiscordSoundBot-win64
+          path: release/DiscordSoundBot-win64.zip
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $notes = @'
+          ## Установка
+
+          1. Скачайте **DiscordSoundBot-win64.zip** ниже и распакуйте в любую папку (например, в «Документы»).
+          2. Запустите **DiscordSoundBot.exe** и согласитесь создать ярлык на рабочем столе.
+          3. Вставьте токен бота на вкладке «Общее» и нажмите «Пригласить бота на сервер».
+
+          Подробная инструкция — в [README](https://github.com/${{ github.repository }}#readme).
+          Если Windows покажет «Система Windows защитила ваш компьютер» — нажмите «Подробнее» → «Выполнить в любом случае».
+          '@
+          gh release create "${{ github.ref_name }}" release/DiscordSoundBot-win64.zip `
+            --title "Discord Sound Bot ${{ github.ref_name }}" --notes $notes
