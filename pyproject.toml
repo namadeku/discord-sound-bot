@@ -1,6 +1,6 @@
 [project]
 name = "discord-sound-bot"
-version = "1.0.0"
+version = "1.0.1"
 description = "Discord bot: intro sounds per user, random sounds, swear statistics; desktop GUI"
 readme = "README.md"
 authors = [
