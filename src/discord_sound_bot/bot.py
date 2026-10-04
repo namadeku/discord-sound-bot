@@ -42,6 +42,7 @@ class SoundBot(discord.Client):
         self._rng = random.Random()
         self._play_locks: dict[int, asyncio.Lock] = {}
         self._random_tasks: dict[int, asyncio.Task[None]] = {}
+        self._pending_joins: dict[int, asyncio.Task[None]] = {}
         self._report_task: asyncio.Task[None] | None = None
         self._register_commands()
 
@@ -60,7 +61,7 @@ class SoundBot(discord.Client):
                 log.exception("Не удалось зарегистрировать команды на сервере %s", guild.name)
 
     async def close(self) -> None:
-        for task in self._random_tasks.values():
+        for task in [*self._random_tasks.values(), *self._pending_joins.values()]:
             task.cancel()
         if self._report_task:
             self._report_task.cancel()
@@ -157,10 +158,46 @@ class SoundBot(discord.Client):
         if before.channel and before.channel != after.channel:
             await self._leave_if_empty(member.guild)
         if after.channel and before.channel != after.channel:
-            file = self.config.intro_for(member.id)
-            if file and await self._ensure_voice(after.channel):
-                await asyncio.sleep(0.5)  # let the joining client start receiving audio
-                await self.play(member.guild, file, interrupt=True)
+            await self._on_member_joined(member, after.channel)
+
+    async def _on_member_joined(
+        self, member: discord.Member, channel: discord.VoiceChannel | discord.StageChannel
+    ) -> None:
+        vc = self._voice_client(member.guild)
+        if vc and vc.channel == channel:
+            await self._play_intro(member)
+        elif member.guild.id not in self._pending_joins:
+            self._pending_joins[member.guild.id] = asyncio.create_task(
+                self._delayed_join(member, channel)
+            )
+
+    async def _delayed_join(
+        self, member: discord.Member, channel: discord.VoiceChannel | discord.StageChannel
+    ) -> None:
+        """Join the first user's channel after join_delay_seconds if anyone is still there."""
+        try:
+            delay = self.config.join_delay_seconds
+            if delay > 0:
+                log.info(
+                    "%s зашёл в %s, захожу через %g с", member.display_name, channel.name, delay
+                )
+                await asyncio.sleep(delay)
+        finally:
+            self._pending_joins.pop(member.guild.id, None)
+        # Follow the first user if they moved; otherwise stay with whoever is left.
+        if member.voice and member.voice.channel:
+            channel = member.voice.channel
+        if not humans_in(channel):
+            log.info("Канал %s опустел, не захожу", channel.name)
+            return
+        if await self._ensure_voice(channel) and member.voice and member.voice.channel == channel:
+            await self._play_intro(member)
+
+    async def _play_intro(self, member: discord.Member) -> None:
+        file = self.config.intro_for(member.id)
+        if file:
+            await asyncio.sleep(0.5)  # let the joining client start receiving audio
+            await self.play(member.guild, file, interrupt=True)
 
     async def _leave_if_empty(self, guild: discord.Guild) -> None:
         vc = self._voice_client(guild)

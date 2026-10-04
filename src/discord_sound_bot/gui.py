@@ -338,16 +338,27 @@ class App:
         ).pack(side="left", fill="x", expand=True)
         self.volume_label.pack(side="left", padx=4)
 
+        ttk.Label(tab, text="Заходить в канал через:").grid(row=4, column=0, sticky="w", pady=4)
+        delay_row = ttk.Frame(tab)
+        delay_row.grid(row=4, column=1, columnspan=2, sticky="w", padx=8)
+        self.join_delay_var = tk.DoubleVar()
+        ttk.Spinbox(
+            delay_row, from_=0, to=600, increment=5, textvariable=self.join_delay_var, width=7
+        ).pack(side="left")
+        ttk.Label(delay_row, text="секунд после первого вошедшего участника").pack(
+            side="left", padx=4
+        )
+
         self.leave_var = tk.BooleanVar()
         ttk.Checkbutton(
             tab,
             text="Выходить из голосового канала, когда в нём никого нет",
             variable=self.leave_var,
-        ).grid(row=4, column=0, columnspan=3, sticky="w", pady=4)
+        ).grid(row=5, column=0, columnspan=3, sticky="w", pady=4)
         self.autostart_var = tk.BooleanVar()
         ttk.Checkbutton(
             tab, text="Запускать бота сразу при открытии программы", variable=self.autostart_var
-        ).grid(row=5, column=0, columnspan=3, sticky="w", pady=4)
+        ).grid(row=6, column=0, columnspan=3, sticky="w", pady=4)
 
         help_text = (
             "Первый запуск:\n"
@@ -362,7 +373,7 @@ class App:
             "Команды в Discord: /stats, /join, /leave, /sound"
         )
         ttk.Label(tab, text=help_text, foreground="#444", wraplength=680, justify="left").grid(
-            row=6, column=0, columnspan=3, sticky="w", pady=(16, 0)
+            row=7, column=0, columnspan=3, sticky="w", pady=(16, 0)
         )
         return tab
 
@@ -398,6 +409,7 @@ class App:
         self.sounds_dir_var.set(cfg.sounds_dir)
         self.volume_var.set(cfg.volume)
         self.volume_label.configure(text=f"{round(cfg.volume * 100)}%")
+        self.join_delay_var.set(cfg.join_delay_seconds)
         self.leave_var.set(cfg.leave_when_empty)
         self.autostart_var.set(cfg.auto_start)
         self._update_token_hint()
@@ -425,6 +437,7 @@ class App:
             volume=round(self.volume_var.get(), 2),
             leave_when_empty=self.leave_var.get(),
             auto_start=self.autostart_var.get(),
+            join_delay_seconds=number(self.join_delay_var, 20),
             intros=intros,
             default_intro="" if default_intro == NO_SOUND else default_intro,
             random_sounds=RandomSounds(

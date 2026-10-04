@@ -52,6 +52,7 @@ class Config:
     volume: float = 0.8
     leave_when_empty: bool = True
     auto_start: bool = True
+    join_delay_seconds: float = 20.0
     intros: list[IntroSound] = field(default_factory=list)
     default_intro: str = ""
     random_sounds: RandomSounds = field(default_factory=RandomSounds)
@@ -81,6 +82,7 @@ class Config:
             volume=float(data.get("volume", default.volume)),
             leave_when_empty=bool(data.get("leave_when_empty", default.leave_when_empty)),
             auto_start=bool(data.get("auto_start", default.auto_start)),
+            join_delay_seconds=float(data.get("join_delay_seconds", default.join_delay_seconds)),
             intros=[
                 IntroSound(int(i["user_id"]), str(i.get("user_name", "")), str(i["file"]))
                 for i in data.get("intros", [])
