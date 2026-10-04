@@ -1,0 +1,49 @@
+[project]
+name = "discord-sound-bot"
+version = "0.1.0"
+description = "Discord bot: intro sounds per user, random sounds, swear statistics; desktop GUI"
+readme = "README.md"
+authors = [
+    { name = "namadeku", email = "133955039+namadeku@users.noreply.github.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "discord-py[voice]>=2.7.1",
+]
+
+[project.gui-scripts]
+discord-sound-bot = "discord_sound_bot.gui:main"
+
+[build-system]
+requires = ["uv_build>=0.12.21,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "basedpyright>=1.40.1",
+    "pre-commit>=4.6.2",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.16.10",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF", "PL", "PT"]
+ignore = ["PLR2004", "RUF001", "RUF003"]
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra -q --strict-markers"
+
+[tool.basedpyright]
+include = ["src", "tests"]
+pythonVersion = "3.13"
+typeCheckingMode = "standard"
