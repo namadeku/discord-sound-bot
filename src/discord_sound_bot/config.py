@@ -1,14 +1,23 @@
-"""Bot settings stored in config.json next to the project, plus the token in .env."""
+"""Bot settings stored in config.json next to the app, plus the token in .env."""
 
 from __future__ import annotations
 
+import base64
+import binascii
 import json
 import os
+import sys
 from dataclasses import asdict, dataclass, field
+from importlib import metadata
 from pathlib import Path
 from typing import Any
 
-BASE_DIR = Path(__file__).resolve().parents[2]
+# In the packaged .exe, data lives next to the executable; from source, in the project root.
+FROZEN = getattr(sys, "frozen", False)
+BASE_DIR = Path(sys.executable).parent if FROZEN else Path(__file__).resolve().parents[2]
+# Read-only files bundled by PyInstaller are unpacked to sys._MEIPASS.
+RESOURCES_DIR = Path(getattr(sys, "_MEIPASS", BASE_DIR))
+ICON_PATH = RESOURCES_DIR / "assets" / "icon.ico"
 CONFIG_PATH = BASE_DIR / "config.json"
 STATS_PATH = BASE_DIR / "stats.json"
 ENV_PATH = BASE_DIR / ".env"
@@ -122,6 +131,38 @@ def write_json_atomic(path: Path, data: object) -> None:
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     os.replace(tmp, path)
+
+
+# View Channels, Send Messages, Connect, Speak.
+INVITE_PERMISSIONS = 1024 | 2048 | 1048576 | 2097152
+
+
+def app_version() -> str:
+    try:
+        return metadata.version("discord-sound-bot")
+    except metadata.PackageNotFoundError:
+        return "dev"
+
+
+def invite_url(token: str) -> str | None:
+    """OAuth2 invite link; the bot's application ID is the base64 first part of its token."""
+    first = token.strip().split(".", 1)[0]
+    try:
+        app_id = base64.b64decode(first + "=" * (-len(first) % 4), validate=True).decode()
+    except (binascii.Error, UnicodeDecodeError):
+        return None
+    if not app_id.isdigit():
+        return None
+    return (
+        f"https://discord.com/oauth2/authorize?client_id={app_id}"
+        f"&scope=bot+applications.commands&permissions={INVITE_PERMISSIONS}"
+    )
+
+
+def ffmpeg_executable() -> str:
+    """Bundled ffmpeg.exe next to the app if present, otherwise ffmpeg from PATH."""
+    bundled = BASE_DIR / "ffmpeg.exe"
+    return str(bundled) if bundled.is_file() else "ffmpeg"
 
 
 def list_audio_files(sounds_dir: Path) -> list[str]:

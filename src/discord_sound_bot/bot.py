@@ -11,7 +11,7 @@ from pathlib import Path
 import discord
 from discord import app_commands
 
-from discord_sound_bot.config import STATS_PATH, Config, list_audio_files
+from discord_sound_bot.config import STATS_PATH, Config, ffmpeg_executable, list_audio_files
 from discord_sound_bot.swears import SwearStats, count_swears
 
 log = logging.getLogger(__name__)
@@ -125,7 +125,8 @@ class SoundBot(discord.Client):
                 loop.call_soon_threadsafe(done.set)
 
             source = discord.PCMVolumeTransformer(
-                discord.FFmpegPCMAudio(str(path)), volume=self.config.volume
+                discord.FFmpegPCMAudio(str(path), executable=ffmpeg_executable()),
+                volume=self.config.volume,
             )
             vc.play(source, after=after)
             log.info("▶ %s (%s)", path.name, guild.name)

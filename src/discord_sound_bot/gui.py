@@ -9,17 +9,23 @@ import logging.handlers
 import os
 import queue
 import tkinter as tk
+import webbrowser
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from tkinter.scrolledtext import ScrolledText
 from typing import Any
 
 from discord_sound_bot.config import (
+    CONFIG_PATH,
+    FROZEN,
+    ICON_PATH,
     LOG_PATH,
     Config,
     IntroSound,
     RandomSounds,
     SwearCounter,
+    app_version,
+    invite_url,
     list_audio_files,
     load_config,
     load_token,
@@ -27,6 +33,7 @@ from discord_sound_bot.config import (
     save_token,
 )
 from discord_sound_bot.runner import BotRunner
+from discord_sound_bot.shortcut import create_desktop_shortcut
 
 log = logging.getLogger("discord_sound_bot")
 
@@ -118,12 +125,15 @@ class IntroDialog(tk.Toplevel):
 class App:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
+        first_run = not CONFIG_PATH.exists()
         self.config = load_config()
         self.events: queue.Queue[Any] = queue.Queue()
         self.runner = BotRunner(on_state_change=lambda running: self.events.put(("state", running)))
         self.channels: list[tuple[int, str]] = []
 
-        root.title("Discord Sound Bot")
+        root.title(f"Discord Sound Bot {app_version()}")
+        if ICON_PATH.is_file():
+            root.iconbitmap(default=str(ICON_PATH))
         root.geometry("760x560")
         root.minsize(640, 480)
         root.protocol("WM_DELETE_WINDOW", self._on_close)
@@ -142,6 +152,8 @@ class App:
         self._load_into_ui()
         root.after(POLL_MS, self._poll_events)
 
+        if first_run and FROZEN:
+            root.after(300, self._offer_shortcut)
         if not load_token():
             notebook.select(3)
             log.info("Вставьте токен бота на вкладке «Общее» и нажмите «Запустить».")
@@ -360,20 +372,28 @@ class App:
             tab, text="Запускать бота сразу при открытии программы", variable=self.autostart_var
         ).grid(row=6, column=0, columnspan=3, sticky="w", pady=4)
 
+        actions = ttk.Frame(tab)
+        actions.grid(row=7, column=0, columnspan=3, sticky="w", pady=(8, 0))
+        ttk.Button(actions, text="Пригласить бота на сервер", command=self._open_invite).pack(
+            side="left"
+        )
+        ttk.Button(
+            actions, text="Создать ярлык на рабочем столе", command=self._create_shortcut
+        ).pack(side="left", padx=8)
+
         help_text = (
             "Первый запуск:\n"
             "1. discord.com/developers/applications → New Application → Bot → Reset Token, "
             "вставьте токен выше.\n"
             "2. Там же на вкладке Bot включите «Server Members Intent» и "
             "«Message Content Intent».\n"
-            "3. OAuth2 → URL Generator: scopes «bot» и «applications.commands»; права: "
-            "View Channels, Send Messages, Connect, Speak. Откройте ссылку и добавьте бота "
-            "на сервер.\n"
+            "3. Нажмите «Пригласить бота на сервер», выберите сервер и подтвердите. "
+            "Так же бот добавляется на любой другой сервер.\n"
             "4. Положите mp3/wav/ogg в папку со звуками.\n\n"
             "Команды в Discord: /stats, /join, /leave, /sound"
         )
         ttk.Label(tab, text=help_text, foreground="#444", wraplength=680, justify="left").grid(
-            row=7, column=0, columnspan=3, sticky="w", pady=(16, 0)
+            row=8, column=0, columnspan=3, sticky="w", pady=(16, 0)
         )
         return tab
 
@@ -623,6 +643,27 @@ class App:
         self.token_var.set("")
         self._update_token_hint()
         log.info("Токен сохранён")
+
+    def _open_invite(self) -> None:
+        url = invite_url(load_token())
+        if url is None:
+            messagebox.showerror("Нет токена", "Сначала сохраните токен бота.")
+            return
+        webbrowser.open(url)
+        log.info("Открыта ссылка-приглашение. После добавления на новый сервер перезапустите бота.")
+
+    def _create_shortcut(self) -> None:
+        try:
+            create_desktop_shortcut()
+        except Exception:
+            log.exception("Не удалось создать ярлык")
+            messagebox.showerror("Ошибка", "Не удалось создать ярлык, подробности в журнале.")
+            return
+        log.info("Ярлык создан на рабочем столе")
+
+    def _offer_shortcut(self) -> None:
+        if messagebox.askyesno("Ярлык", "Создать ярлык Discord Sound Bot на рабочем столе?"):
+            self._create_shortcut()
 
     def toggle_bot(self) -> None:
         if self.runner.running:

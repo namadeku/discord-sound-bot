@@ -1,8 +1,13 @@
+import base64
 from pathlib import Path
 
 from discord_sound_bot.config import (
+    BASE_DIR,
     Config,
     IntroSound,
+    app_version,
+    ffmpeg_executable,
+    invite_url,
     list_audio_files,
     load_config,
     load_token,
@@ -61,3 +66,24 @@ def test_token_save_keeps_other_lines(tmp_path: Path, monkeypatch) -> None:
     assert load_token(env) == "new-token"
     assert "OTHER=1" in env.read_text(encoding="utf-8")
     assert load_token(tmp_path / "missing.env") == ""
+
+
+def test_invite_url_from_token() -> None:
+    app_id = "123456789012345678"
+    token = base64.b64encode(app_id.encode()).decode().rstrip("=") + ".abc.def"
+
+    url = invite_url(token)
+
+    assert url is not None
+    assert f"client_id={app_id}" in url
+    assert "permissions=3148800" in url
+    assert invite_url("") is None
+    assert invite_url("not-a-token!") is None
+
+
+def test_ffmpeg_falls_back_to_path() -> None:
+    assert ffmpeg_executable() in {"ffmpeg", str(BASE_DIR / "ffmpeg.exe")}
+
+
+def test_app_version_is_known() -> None:
+    assert app_version() != "dev"
